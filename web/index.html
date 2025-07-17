@@ -1,1 +1,60 @@
-
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Code Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.30.1/min/vs/loader.js"></script>
+</head>
+<body>
+    <div id="editor-container" style="width: 100%; height: 400px;"></div>
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <input type="text" id="chat-input" placeholder="Ask me to edit code...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    
+    <script>
+        let editor;
+        let ws;
+        
+        // Initialize Monaco Editor
+        require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.30.1/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: '# Your code here\n',
+                language: 'python',
+                theme: 'vs-dark'
+            });
+        });
+        
+        // WebSocket connection
+        ws = new WebSocket('ws://localhost:8000/ws');
+        
+        ws.onmessage = function(event) {
+            const response = JSON.parse(event.data);
+            handleAgentResponse(response);
+        };
+        
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = {
+                type: 'chat',
+                content: input.value,
+                code: editor.getValue()
+            };
+            
+            ws.send(JSON.stringify(message));
+            input.value = '';
+        }
+        
+        function handleAgentResponse(response) {
+            if (response.type === 'code_edit') {
+                editor.setValue(response.code);
+            }
+            
+            // Display message in chat
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML += `<div><strong>AI:</strong> ${response.message}</div>`;
+        }
+    </script>
+</body>
+</html>
