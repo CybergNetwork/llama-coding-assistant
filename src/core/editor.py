@@ -65,3 +65,57 @@ class PreciseCodeEditor:
         last_edit = self.edit_history.pop()
         # Implementation for rollback
         return last_edit
+        
+class CodeContextAnalyzer:
+    def __init__(self, llama_agent, code_parser):
+        self.agent = llama_agent
+        self.parser = code_parser
+    
+    def analyze_code_intent(self, code_snippet, context=""):
+        """Analyze what the code is trying to do"""
+        prompt = f"""
+        Analyze the following code and explain its purpose, identify potential issues, and suggest improvements:
+        
+        Context: {context}
+        
+        Code:
+        ```
+        {code_snippet}
+        ```
+        
+        Please provide:
+        1. Purpose and functionality
+        2. Potential issues or bugs
+        3. Suggestions for improvement
+        4. Dependencies and imports needed
+        """
+        
+        return self.agent.generate_response(prompt)
+    
+    def suggest_line_edit(self, file_content, line_number, desired_change):
+        """Suggest specific line edit based on desired change"""
+        lines = file_content.split('\n')
+        current_line = lines[line_number - 1]
+        
+        # Get surrounding context
+        context_lines, start_idx = self.parser.get_line_context(
+            file_content, line_number - 1, context_size=10
+        )
+        
+        context_code = '\n'.join(context_lines)
+        
+        prompt = f"""
+        You are a precise code editor. Given the following code context and a specific line that needs to be changed, provide ONLY the new line content.
+        
+        Current line {line_number}: {current_line}
+        Desired change: {desired_change}
+        
+        Context:
+        ```
+        {context_code}
+        ```
+        
+        Provide only the replacement line, maintaining proper indentation and syntax.
+        """
+        
+        return self.agent.generate_response(prompt)
